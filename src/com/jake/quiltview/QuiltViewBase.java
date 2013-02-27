@@ -39,6 +39,15 @@ public class QuiltViewBase
 
     private int mListTop;
 
+    private static final int LAYOUT_MODE_BELOW = 0;
+
+    private static final int LAYOUT_MODE_ABOVE = 1;
+
+    private int mLastItemPosition;
+
+    private int mFirstItemPosition;
+
+    private int mListTopOffset;
 
     public QuiltViewBase( Context context, AttributeSet attrs )
     {
@@ -125,6 +134,11 @@ public class QuiltViewBase
 
     public void addPatch( View view )
     {
+        addPatch( view, LAYOUT_MODE_BELOW );
+    }
+
+    public void addPatch( View view, int layoutMode )
+    {
 
         int count = this.getChildCount();
 
@@ -135,13 +149,13 @@ public class QuiltViewBase
         params.height = size[1] * child.height_ratio;
         params.rowSpec = GridLayout.spec( Integer.MIN_VALUE, child.height_ratio );
         params.columnSpec = GridLayout.spec( Integer.MIN_VALUE, child.width_ratio );
-        addViewInLayout( view, -1, params, true );
+
+        int index = layoutMode == LAYOUT_MODE_ABOVE ? 0 : -1;
+        addViewInLayout( view, index, params, true );
 
         int itemWidth = getWidth();
         view.measure( MeasureSpec.EXACTLY | itemWidth, MeasureSpec.UNSPECIFIED );
         Log.i( "Bistri", "addPatch " + view.getBottom() );
-//        addView( view );
-//        views.add( view );
     }
 
     public void refresh()
@@ -270,6 +284,19 @@ public class QuiltViewBase
     public void setAdapter( BaseAdapter mAdapter )
     {
         this.mAdapter = mAdapter;
+
+        removeAllViews();
+
+        int position = 0;
+        Log.i( "Bistri", "mheight=" + getHeight() + " count=" + mAdapter.getCount() );
+        while ( position < 12 && position < mAdapter.getCount() )
+        {
+            View child = mAdapter.getView( position, null, this );
+            addPatch( child );
+//                    bottomEdge += newBottomChild.getMeasuredHeight();
+            position++;
+        }
+
         requestLayout();
     }
 
@@ -279,37 +306,40 @@ public class QuiltViewBase
         Log.i( "Bistri",
                "onLayout adapter=" + mAdapter + " childcount=" + getChildCount() + " l=" + left + " t=" + top + " r="
                    + right + " b=" + bottom );
-
-        if ( mAdapter != null )
-        {
-            if ( getChildCount() == 0 )
-            {
-                int position = 0;
-                Log.i( "Bistri", "mheight=" + getHeight() + " count=" + mAdapter.getCount() );
-                while ( position < 12 && position < mAdapter.getCount() )
-                {
-                    View child = mAdapter.getView( position, null, this );
-                    addPatch( child );
-//                    bottomEdge += newBottomChild.getMeasuredHeight();
-                    position++;
-                }
-            }
-            else
-            {
-
-            }
-
-            if (getChildCount() == 0) {
-                mLastItemPosition = -1;
-                fillListDown(mListTop, 0);
-            } else {
-                final int offset = mListTop + mListTopOffset - getChildAt(0).getTop();
-                removeNonVisibleViews(offset);
-                fillList(offset);
-            }
-
-        }
         super.onLayout( changed, left, top, right, bottom );
+
+//        if ( mAdapter != null )
+//        {
+//            if ( getChildCount() == 0 )
+//            {
+//                int position = 0;
+//                Log.i( "Bistri", "mheight=" + getHeight() + " count=" + mAdapter.getCount() );
+//                while ( position < 12 && position < mAdapter.getCount() )
+//                {
+//                    View child = mAdapter.getView( position, null, this );
+//                    addPatch( child );
+////                    bottomEdge += newBottomChild.getMeasuredHeight();
+//                    position++;
+//                }
+//
+//            }
+//            else
+//            {
+//
+//            }
+//            invalidate();
+
+//            if (getChildCount() == 0) {
+//                mLastItemPosition = -1;
+//                fillListDown(mListTop, 0);
+//            } else {
+//                final int offset = mListTop + mListTopOffset - getChildAt(0).getTop();
+//                removeNonVisibleViews(offset);
+//                fillList(offset);
+//            }
+
+//        }
+
     }
 
     @Override
@@ -338,104 +368,114 @@ public class QuiltViewBase
         return true;
     }
 
-
     /**
      * Removes view that are outside of the visible part of the list. Will not
      * remove all views.
      *
      * @param offset Offset of the visible area
      */
-    private void removeNonVisibleViews(final int offset) {
-        // We need to keep close track of the child count in this function. We
-        // should never remove all the views, because if we do, we loose track
-        // of were we are.
-        int childCount = getChildCount();
-
-        // if we are not at the bottom of the list and have more than one child
-        if (mLastItemPosition != mAdapter.getCount() - 1 && childCount > 1) {
-            // check if we should remove any views in the top
-            View firstChild = getChildAt(0);
-            while (firstChild != null && firstChild.getBottom() + offset < 0) {
-                // remove the top view
-                removeViewInLayout(firstChild);
-                childCount--;
-                mCachedItemViews.addLast(firstChild);
-                mFirstItemPosition++;
-
-                // update the list offset (since we've removed the top child)
-                mListTopOffset += firstChild.getMeasuredHeight();
-
-                // Continue to check the next child only if we have more than
-                // one child left
-                if (childCount > 1) {
-                    firstChild = getChildAt(0);
-                } else {
-                    firstChild = null;
-                }
-            }
-        }
-
-        // if we are not at the top of the list and have more than one child
-        if (mFirstItemPosition != 0 && childCount > 1) {
-            // check if we should remove any views in the bottom
-            View lastChild = getChildAt(childCount - 1);
-            while (lastChild != null && lastChild.getTop() + offset > getHeight()) {
-                // remove the bottom view
-                removeViewInLayout(lastChild);
-                childCount--;
-                mCachedItemViews.addLast(lastChild);
-                mLastItemPosition--;
-
-                // Continue to check the next child only if we have more than
-                // one child left
-                if (childCount > 1) {
-                    lastChild = getChildAt(childCount - 1);
-                } else {
-                    lastChild = null;
-                }
-            }
-        }
-    }
+//    private void removeNonVisibleViews(final int offset) {
+//        // We need to keep close track of the child count in this function. We
+//        // should never remove all the views, because if we do, we loose track
+//        // of were we are.
+//        int childCount = getChildCount();
+//
+//        // if we are not at the bottom of the list and have more than one child
+//        if (mLastItemPosition != mAdapter.getCount() - 1 && childCount > 1) {
+//            // check if we should remove any views in the top
+//            View firstChild = getChildAt(0);
+//            while (firstChild != null && firstChild.getBottom() + offset < 0) {
+//                // remove the top view
+//                removeViewInLayout(firstChild);
+//                childCount--;
+//                mCachedItemViews.addLast(firstChild);
+//                mFirstItemPosition++;
+//
+//                // update the list offset (since we've removed the top child)
+//                mListTopOffset += firstChild.getMeasuredHeight();
+//
+//                // Continue to check the next child only if we have more than
+//                // one child left
+//                if (childCount > 1) {
+//                    firstChild = getChildAt(0);
+//                } else {
+//                    firstChild = null;
+//                }
+//            }
+//        }
+//
+//        // if we are not at the top of the list and have more than one child
+//        if (mFirstItemPosition != 0 && childCount > 1) {
+//            // check if we should remove any views in the bottom
+//            View lastChild = getChildAt(childCount - 1);
+//            while (lastChild != null && lastChild.getTop() + offset > getHeight()) {
+//                // remove the bottom view
+//                removeViewInLayout(lastChild);
+//                childCount--;
+//                mCachedItemViews.addLast(lastChild);
+//                mLastItemPosition--;
+//
+//                // Continue to check the next child only if we have more than
+//                // one child left
+//                if (childCount > 1) {
+//                    lastChild = getChildAt(childCount - 1);
+//                } else {
+//                    lastChild = null;
+//                }
+//            }
+//        }
+//    }
+//
 
     /**
      * Fills the list with child-views
      *
      * @param offset Offset of the visible area
      */
-    private void fillList(final int offset) {
-        final int bottomEdge = getChildAt(getChildCount() - 1).getBottom();
-        fillListDown(bottomEdge, offset);
+    private void fillList( final int offset )
+    {
+        final int bottomEdge = getChildAt( getChildCount() - 1 ).getBottom();
+        fillListDown( bottomEdge, offset );
 
-        final int topEdge = getChildAt(0).getTop();
-        fillListUp(topEdge, offset);
+        final int topEdge = getChildAt( 0 ).getTop();
+        fillListUp( topEdge, offset );
     }
 
     /**
      * Starts at the bottom and adds children until we've passed the list bottom
      *
      * @param bottomEdge The bottom edge of the currently last child
-     * @param offset Offset of the visible area
+     * @param offset     Offset of the visible area
      */
-    private void fillListDown(int bottomEdge, final int offset) {
-        while (bottomEdge + offset < getHeight() && mLastItemPosition < mAdapter.getCount() - 1) {
+    private void fillListDown( int bottomEdge, final int offset )
+    {
+        while ( bottomEdge + offset < getHeight() && mLastItemPosition < mAdapter.getCount() - 1 )
+        {
             mLastItemPosition++;
-            final View newBottomchild = mAdapter.getView(mLastItemPosition, getCachedView(), this);
-            addAndMeasureChild(newBottomchild, LAYOUT_MODE_BELOW);
+            final View newBottomchild = mAdapter.getView( mLastItemPosition, getCachedView(), this );
+            addPatch( newBottomchild, LAYOUT_MODE_BELOW );
             bottomEdge += newBottomchild.getMeasuredHeight();
         }
+    }
+
+    private View getCachedView()
+    {
+        return null;//for now
     }
 
     /**
      * Starts at the top and adds children until we've passed the list top
      *
      * @param topEdge The top edge of the currently first child
-     * @param offset Offset of the visible area
+     * @param offset  Offset of the visible area
      */
-    private void fillListUp(int topEdge, final int offset) {
-        while (topEdge + offset > 0 && mFirstItemPosition > 0) {
+    private void fillListUp( int topEdge, final int offset )
+    {
+        while ( topEdge + offset > 0 && mFirstItemPosition > 0 )
+        {
             mFirstItemPosition--;
-            final View newTopCild = mAdapter.getView(mFirstItemPosition, getCachedView(), this);
-            addAndMeasureChild(newTopCild, LAYOUT_MODE_ABOVE);
+            final View newTopCild = mAdapter.getView( mFirstItemPosition, getCachedView(), this );
+            addPatch( newTopCild, LAYOUT_MODE_ABOVE );
             final int childHeight = newTopCild.getMeasuredHeight();
             topEdge -= childHeight;
 
